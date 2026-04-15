@@ -68,22 +68,31 @@ class Exercise(db.Model):
         return f"<Exercise {self.name}>"
     
 class WorkoutExercise(db.Model):
-    """Represents the association between a Workout and an Exercise with specific details."""
     __tablename__ = 'workout_exercises'
+
     id = db.Column(db.Integer, primary_key=True)
+
     workout_id = db.Column(db.Integer, db.ForeignKey('workouts.id'), nullable=False)
     exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
-    sets = db.Column(db.Integer, nullable=False)
-    reps = db.Column(db.Integer, nullable=False)
-    weight = db.Column(db.Float)
 
+    sets = db.Column(db.Integer, nullable=False)
+
+    reps = db.Column(db.Integer, nullable=True)
+    duration_seconds = db.Column(db.Integer, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('workout_id', 'exercise_id', name='unique_workout_exercise'),
+        CheckConstraint('sets > 0', name='check_sets_positive'),
+        CheckConstraint('reps IS NULL OR reps > 0', name='check_reps_positive'),
+        CheckConstraint('duration_seconds IS NULL OR duration_seconds > 0', name='check_duration_positive'),
+    )
 
     @validates('sets')
     def validate_sets(self, key, value):
         if value <= 0:
             raise ValueError("Sets must be greater than 0")
         return value
-    
+
     def validate_reps_duration(self):
         if self.reps is None and self.duration_seconds is None:
             raise ValueError("Must provide either reps or duration_seconds")
@@ -91,13 +100,5 @@ class WorkoutExercise(db.Model):
         if self.reps is not None and self.duration_seconds is not None:
             raise ValueError("Provide either reps OR duration_seconds, not both")
 
-    __table_args__ = (
-        UniqueConstraint('workout_id', 'exercise_id', name='unique_workout_exercise'),
-        CheckConstraint('sets > 0', name='check_sets_positive'),
-         CheckConstraint('duration_seconds IS NULL OR duration_seconds > 0', name='check_duration_positive'),
-        CheckConstraint('reps IS NULL OR reps > 0', name='check_reps_positive'),
-        CheckConstraint('weight >= 0', name='check_weight_non_negative'),
-    )
-
     def __repr__(self):
-        return f"<WorkoutExercise Workout ID: {self.workout_id}, Exercise ID: {self.exercise_id}>"
+        return f"<WorkoutExercise W:{self.workout_id} E:{self.exercise_id}>"
