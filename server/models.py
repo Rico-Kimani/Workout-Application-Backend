@@ -13,6 +13,13 @@ class Workout(db.Model):
     duration_minutes = db.Column(db.Integer, nullable=False)
     notes = db.Column(db.Text)
 
+
+    @validates('duration_minutes')
+    def validate_duration(self, key, value):
+        if value <= 0:
+            raise ValueError("Duration must be greater than 0")
+        return value
+
     workout_exercises = db.relationship(
         'WorkoutExercise',
         backref='workout',
@@ -37,6 +44,13 @@ class Exercise(db.Model):
     muscle_group = db.Column(db.String(50))
     category = db.Column(db.String, nullable=False)
     equipment_needed = db.Column(db.Boolean, nullable=False)
+
+    @validates('category')
+    def validate_category(self, key, value):
+        allowed = ['strength', 'cardio', 'flexibility', 'balance']
+        if value.lower() not in allowed:
+            raise ValueError(f"Category must be one of {allowed}")
+        return value
 
     workout_exercises = db.relationship(
         'WorkoutExercise',
@@ -63,10 +77,25 @@ class WorkoutExercise(db.Model):
     reps = db.Column(db.Integer, nullable=False)
     weight = db.Column(db.Float)
 
+
+    @validates('sets')
+    def validate_sets(self, key, value):
+        if value <= 0:
+            raise ValueError("Sets must be greater than 0")
+        return value
+    
+    def validate_reps_duration(self):
+        if self.reps is None and self.duration_seconds is None:
+            raise ValueError("Must provide either reps or duration_seconds")
+
+        if self.reps is not None and self.duration_seconds is not None:
+            raise ValueError("Provide either reps OR duration_seconds, not both")
+
     __table_args__ = (
         UniqueConstraint('workout_id', 'exercise_id', name='unique_workout_exercise'),
         CheckConstraint('sets > 0', name='check_sets_positive'),
-        CheckConstraint('reps > 0', name='check_reps_positive'),
+         CheckConstraint('duration_seconds IS NULL OR duration_seconds > 0', name='check_duration_positive'),
+        CheckConstraint('reps IS NULL OR reps > 0', name='check_reps_positive'),
         CheckConstraint('weight >= 0', name='check_weight_non_negative'),
     )
 
